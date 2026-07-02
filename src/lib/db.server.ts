@@ -2,22 +2,41 @@
  * Turso (libSQL) client + auto-migrating schema.
  * Server-only. Import lazily inside server-fn handlers.
  */
-import { createClient, type Client } from "@libsql/client";
+// Use the web client — HTTP-based, works in every serverless runtime
+// (Netlify Functions, Cloudflare Workers, Node, edge). Avoids native
+// binding issues that the default `@libsql/client` entry can hit.
+import { createClient, type Client } from "@libsql/client/web";
 
 let _client: Client | null = null;
 let _initPromise: Promise<void> | null = null;
 
+function cleanEnv(v: string | undefined): string | undefined {
+  if (!v) return undefined;
+  // Strip whitespace/newlines and surrounding quotes — common copy-paste
+  // artifacts that make Turso return HTTP 400 / 401.
+  return v.trim().replace(/^['"]|['"]$/g, "");
+}
+
+function normalizeUrl(raw: string): string {
+  // The web client speaks HTTPS. `libsql://` and `wss://` both map to https.
+  let u = raw;
+  if (u.startsWith("libsql://")) u = "https://" + u.slice("libsql://".length);
+  else if (u.startsWith("wss://")) u = "https://" + u.slice("wss://".length);
+  else if (u.startsWith("ws://")) u = "http://" + u.slice("ws://".length);
+  return u.replace(/\/+$/, "");
+}
+
 export function getDb(): Client {
   if (_client) return _client;
-  const url = process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN;
+  const url = cleanEnv(process.env.TURSO_DATABASE_URL);
+  const authToken = cleanEnv(process.env.TURSO_AUTH_TOKEN);
   if (!url) throw new Error("TURSO_DATABASE_URL not configured");
-  _client = createClient({ url, authToken });
+  _client = createClient({ url: normalizeUrl(url), authToken });
   return _client;
 }
 
 export function dbConfigured(): boolean {
-  return Boolean(process.env.TURSO_DATABASE_URL);
+  return Boolean(cleanEnv(process.env.TURSO_DATABASE_URL));
 }
 
 export async function ensureSchema(): Promise<void> {
@@ -112,7 +131,8 @@ export async function dbStatus(): Promise<{
   host?: string;
   counts?: { drafts: number; reviews: number; clicks: number; queue: number };
 }> {
-  const url = process.env.TURSO_DATABASE_URL;
+  const url = cleanEnv(process.env.TURSO_DATABASE_URL);
+  const hasToken = Boolean(cleanEnv(process.env.TURSO_AUTH_TOKEN));
   if (!url) return { configured: false, connected: false };
   try {
     await ensureSchema();
@@ -126,7 +146,7 @@ export async function dbStatus(): Promise<{
     return {
       configured: true,
       connected: true,
-      host: new URL(url.replace("libsql://", "https://")).host,
+      host: new URL(normalizeUrl(url)).host,
       counts: {
         drafts: Number(d.rows[0]?.n ?? 0),
         reviews: Number(r.rows[0]?.n ?? 0),
@@ -135,10 +155,16 @@ export async function dbStatus(): Promise<{
       },
     };
   } catch (e) {
+    const raw = e instanceof Error ? e.message : "connection failed";
+    // Give admins an actionable hint alongside the raw SDK error.
+    let hint = "";
+    if (/401|unauthor|token/i.test(raw)) hint = " — check TURSO_AUTH_TOKEN (expired, wrong DB, or has extra whitespace).";
+    else if (/400/.test(raw)) hint = " — check TURSO_DATABASE_URL host and that TURSO_AUTH_TOKEN belongs to this DB (regenerate if unsure).";
+    else if (/ENOTFOUND|fetch failed|network/i.test(raw)) hint = " — DNS/network error reaching the Turso host.";
     return {
       configured: true,
       connected: false,
-      error: e instanceof Error ? e.message : "connection failed",
+      error: raw + hint + (hasToken ? "" : " — TURSO_AUTH_TOKEN is empty."),
     };
   }
 }
