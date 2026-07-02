@@ -16,6 +16,7 @@ import { Footer } from "@/components/layout/Footer";
 import { SkipToContent } from "@/components/layout/SkipToContent";
 import { ThemeInitScript, ThemeProvider } from "@/components/layout/ThemeProvider";
 import { PriceDisplayProvider } from "@/lib/price-display";
+import { SiteHeadInjector } from "@/components/layout/SiteHeadInjector";
 
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from "@/config/site";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
@@ -150,6 +151,7 @@ function RootComponent() {
               <Outlet />
             </main>
             <Footer />
+            <SiteHeadInjector />
           </div>
 
         </PriceDisplayProvider>

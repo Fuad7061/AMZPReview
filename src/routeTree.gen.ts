@@ -13,10 +13,22 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as MethodologyRouteImport } from './routes/methodology'
+import { Route as LogmeinRouteImport } from './routes/logmein'
 import { Route as DisclosureRouteImport } from './routes/disclosure'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as ProductSlugRouteImport } from './routes/product.$slug'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminReviewsRouteImport } from './routes/admin/reviews'
+import { Route as AdminGenerateRouteImport } from './routes/admin/generate'
+import { Route as AdminAutopilotRouteImport } from './routes/admin/autopilot'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
+import { Route as AdminReviewsNewRouteImport } from './routes/admin/reviews.new'
+import { Route as AdminReviewsIdRouteImport } from './routes/admin/reviews.$id'
+import { Route as ApiPublicAutopilotRunRouteImport } from './routes/api/public/autopilot.run'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -38,6 +50,11 @@ const MethodologyRoute = MethodologyRouteImport.update({
   path: '/methodology',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LogmeinRoute = LogmeinRouteImport.update({
+  id: '/logmein',
+  path: '/logmein',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DisclosureRoute = DisclosureRouteImport.update({
   id: '/disclosure',
   path: '/disclosure',
@@ -48,9 +65,24 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const RSlugRoute = RSlugRouteImport.update({
+  id: '/r/$slug',
+  path: '/r/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductSlugRoute = ProductSlugRouteImport.update({
@@ -58,80 +90,194 @@ const ProductSlugRoute = ProductSlugRouteImport.update({
   path: '/product/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminReviewsRoute = AdminReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminGenerateRoute = AdminGenerateRouteImport.update({
+  id: '/generate',
+  path: '/generate',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAutopilotRoute = AdminAutopilotRouteImport.update({
+  id: '/autopilot',
+  path: '/autopilot',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminReviewsNewRoute = AdminReviewsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AdminReviewsRoute,
+} as any)
+const AdminReviewsIdRoute = AdminReviewsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AdminReviewsRoute,
+} as any)
+const ApiPublicAutopilotRunRoute = ApiPublicAutopilotRunRouteImport.update({
+  id: '/api/public/autopilot/run',
+  path: '/api/public/autopilot/run',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/disclosure': typeof DisclosureRoute
+  '/logmein': typeof LogmeinRoute
   '/methodology': typeof MethodologyRoute
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/autopilot': typeof AdminAutopilotRoute
+  '/admin/generate': typeof AdminGenerateRoute
+  '/admin/reviews': typeof AdminReviewsRouteWithChildren
+  '/admin/settings': typeof AdminSettingsRoute
   '/product/$slug': typeof ProductSlugRoute
+  '/r/$slug': typeof RSlugRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/reviews/$id': typeof AdminReviewsIdRoute
+  '/admin/reviews/new': typeof AdminReviewsNewRoute
+  '/api/public/autopilot/run': typeof ApiPublicAutopilotRunRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/disclosure': typeof DisclosureRoute
+  '/logmein': typeof LogmeinRoute
   '/methodology': typeof MethodologyRoute
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/autopilot': typeof AdminAutopilotRoute
+  '/admin/generate': typeof AdminGenerateRoute
+  '/admin/reviews': typeof AdminReviewsRouteWithChildren
+  '/admin/settings': typeof AdminSettingsRoute
   '/product/$slug': typeof ProductSlugRoute
+  '/r/$slug': typeof RSlugRoute
+  '/admin': typeof AdminIndexRoute
+  '/admin/reviews/$id': typeof AdminReviewsIdRoute
+  '/admin/reviews/new': typeof AdminReviewsNewRoute
+  '/api/public/autopilot/run': typeof ApiPublicAutopilotRunRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/disclosure': typeof DisclosureRoute
+  '/logmein': typeof LogmeinRoute
   '/methodology': typeof MethodologyRoute
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/autopilot': typeof AdminAutopilotRoute
+  '/admin/generate': typeof AdminGenerateRoute
+  '/admin/reviews': typeof AdminReviewsRouteWithChildren
+  '/admin/settings': typeof AdminSettingsRoute
   '/product/$slug': typeof ProductSlugRoute
+  '/r/$slug': typeof RSlugRoute
+  '/admin/': typeof AdminIndexRoute
+  '/admin/reviews/$id': typeof AdminReviewsIdRoute
+  '/admin/reviews/new': typeof AdminReviewsNewRoute
+  '/api/public/autopilot/run': typeof ApiPublicAutopilotRunRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/about'
     | '/disclosure'
+    | '/logmein'
     | '/methodology'
     | '/privacy'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/analytics'
+    | '/admin/autopilot'
+    | '/admin/generate'
+    | '/admin/reviews'
+    | '/admin/settings'
     | '/product/$slug'
+    | '/r/$slug'
+    | '/admin/'
+    | '/admin/reviews/$id'
+    | '/admin/reviews/new'
+    | '/api/public/autopilot/run'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/disclosure'
+    | '/logmein'
     | '/methodology'
     | '/privacy'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/analytics'
+    | '/admin/autopilot'
+    | '/admin/generate'
+    | '/admin/reviews'
+    | '/admin/settings'
     | '/product/$slug'
+    | '/r/$slug'
+    | '/admin'
+    | '/admin/reviews/$id'
+    | '/admin/reviews/new'
+    | '/api/public/autopilot/run'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/about'
     | '/disclosure'
+    | '/logmein'
     | '/methodology'
     | '/privacy'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/analytics'
+    | '/admin/autopilot'
+    | '/admin/generate'
+    | '/admin/reviews'
+    | '/admin/settings'
     | '/product/$slug'
+    | '/r/$slug'
+    | '/admin/'
+    | '/admin/reviews/$id'
+    | '/admin/reviews/new'
+    | '/api/public/autopilot/run'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   DisclosureRoute: typeof DisclosureRoute
+  LogmeinRoute: typeof LogmeinRoute
   MethodologyRoute: typeof MethodologyRoute
   PrivacyRoute: typeof PrivacyRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   ProductSlugRoute: typeof ProductSlugRoute
+  RSlugRoute: typeof RSlugRoute
+  ApiPublicAutopilotRunRoute: typeof ApiPublicAutopilotRunRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -164,6 +310,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MethodologyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/logmein': {
+      id: '/logmein'
+      path: '/logmein'
+      fullPath: '/logmein'
+      preLoaderRoute: typeof LogmeinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/disclosure': {
       id: '/disclosure'
       path: '/disclosure'
@@ -178,11 +331,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/r/$slug': {
+      id: '/r/$slug'
+      path: '/r/$slug'
+      fullPath: '/r/$slug'
+      preLoaderRoute: typeof RSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/product/$slug': {
@@ -192,19 +366,125 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/reviews': {
+      id: '/admin/reviews'
+      path: '/reviews'
+      fullPath: '/admin/reviews'
+      preLoaderRoute: typeof AdminReviewsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/generate': {
+      id: '/admin/generate'
+      path: '/generate'
+      fullPath: '/admin/generate'
+      preLoaderRoute: typeof AdminGenerateRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/autopilot': {
+      id: '/admin/autopilot'
+      path: '/autopilot'
+      fullPath: '/admin/autopilot'
+      preLoaderRoute: typeof AdminAutopilotRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/reviews/new': {
+      id: '/admin/reviews/new'
+      path: '/new'
+      fullPath: '/admin/reviews/new'
+      preLoaderRoute: typeof AdminReviewsNewRouteImport
+      parentRoute: typeof AdminReviewsRoute
+    }
+    '/admin/reviews/$id': {
+      id: '/admin/reviews/$id'
+      path: '/$id'
+      fullPath: '/admin/reviews/$id'
+      preLoaderRoute: typeof AdminReviewsIdRouteImport
+      parentRoute: typeof AdminReviewsRoute
+    }
+    '/api/public/autopilot/run': {
+      id: '/api/public/autopilot/run'
+      path: '/api/public/autopilot/run'
+      fullPath: '/api/public/autopilot/run'
+      preLoaderRoute: typeof ApiPublicAutopilotRunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AdminReviewsRouteChildren {
+  AdminReviewsIdRoute: typeof AdminReviewsIdRoute
+  AdminReviewsNewRoute: typeof AdminReviewsNewRoute
+}
+
+const AdminReviewsRouteChildren: AdminReviewsRouteChildren = {
+  AdminReviewsIdRoute: AdminReviewsIdRoute,
+  AdminReviewsNewRoute: AdminReviewsNewRoute,
+}
+
+const AdminReviewsRouteWithChildren = AdminReviewsRoute._addFileChildren(
+  AdminReviewsRouteChildren,
+)
+
+interface AdminRouteRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminAutopilotRoute: typeof AdminAutopilotRoute
+  AdminGenerateRoute: typeof AdminGenerateRoute
+  AdminReviewsRoute: typeof AdminReviewsRouteWithChildren
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminAutopilotRoute: AdminAutopilotRoute,
+  AdminGenerateRoute: AdminGenerateRoute,
+  AdminReviewsRoute: AdminReviewsRouteWithChildren,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   DisclosureRoute: DisclosureRoute,
+  LogmeinRoute: LogmeinRoute,
   MethodologyRoute: MethodologyRoute,
   PrivacyRoute: PrivacyRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   ProductSlugRoute: ProductSlugRoute,
+  RSlugRoute: RSlugRoute,
+  ApiPublicAutopilotRunRoute: ApiPublicAutopilotRunRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

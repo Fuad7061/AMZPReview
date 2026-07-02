@@ -1,11 +1,14 @@
+/**
+ * Dynamic sitemap.xml — includes static routes AND every published review
+ * from Turso automatically. Base URL comes from admin settings (siteUrl)
+ * or is auto-derived from the request Host header.
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
-// TODO: replace with your project URL once a project name or custom domain is set.
-const BASE_URL = "";
-
 interface SitemapEntry {
   path: string;
+  lastmod?: string;
   changefreq?: "always" | "hourly" | "daily" | "weekly" | "monthly" | "yearly" | "never";
   priority?: string;
 }
@@ -13,9 +16,17 @@ interface SitemapEntry {
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
+        const { readSettings } = await import("@/lib/admin-session.server");
+        const settings = await readSettings();
+
+        const url = new URL(request.url);
+        const proto = request.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "");
+        const host = request.headers.get("host") ?? url.host;
+        const baseUrl = (settings.siteUrl || `${proto}://${host}`).replace(/\/$/, "");
+
         const entries: SitemapEntry[] = [
-          { path: "/", changefreq: "weekly", priority: "1.0" },
+          { path: "/", changefreq: "daily", priority: "1.0" },
           { path: "/about", changefreq: "monthly", priority: "0.5" },
           { path: "/methodology", changefreq: "monthly", priority: "0.7" },
           { path: "/disclosure", changefreq: "yearly", priority: "0.3" },
@@ -23,10 +34,32 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/terms", changefreq: "yearly", priority: "0.3" },
         ];
 
+        // Append every published review from the database.
+        try {
+          const { dbConfigured, ensureSchema, getDb } = await import("@/lib/db.server");
+          if (dbConfigured()) {
+            await ensureSchema();
+            const rs = await getDb().execute(
+              `SELECT slug, updated_at FROM reviews WHERE status='published' ORDER BY updated_at DESC LIMIT 5000`,
+            );
+            for (const r of rs.rows) {
+              entries.push({
+                path: `/r/${String(r.slug)}`,
+                lastmod: String(r.updated_at).replace(" ", "T") + "Z",
+                changefreq: "weekly",
+                priority: "0.8",
+              });
+            }
+          }
+        } catch {
+          /* sitemap must never 500 — fall back to static entries */
+        }
+
         const urls = entries.map((e) =>
           [
             `  <url>`,
-            `    <loc>${BASE_URL}${e.path}</loc>`,
+            `    <loc>${baseUrl}${e.path}</loc>`,
+            e.lastmod ? `    <lastmod>${e.lastmod}</lastmod>` : null,
             e.changefreq ? `    <changefreq>${e.changefreq}</changefreq>` : null,
             e.priority ? `    <priority>${e.priority}</priority>` : null,
             `  </url>`,
@@ -44,8 +77,8 @@ export const Route = createFileRoute("/sitemap.xml")({
 
         return new Response(xml, {
           headers: {
-            "Content-Type": "application/xml",
-            "Cache-Control": "public, max-age=3600",
+            "Content-Type": "application/xml; charset=utf-8",
+            "Cache-Control": "public, max-age=600",
           },
         });
       },
