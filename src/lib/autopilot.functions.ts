@@ -1,19 +1,29 @@
 /**
- * Autopilot queue — enqueue keywords, worker turns them into review drafts
- * using the Lovable AI Gateway. Drives Bulk Generate at scale.
+ * Autopilot queue — enqueue keywords, worker publishes each keyword as
+ * a live product page at /product/{slug}. The /product/$slug route
+ * auto-fetches Amazon listings, auto-categorizes, and renders the full
+ * SEO article on demand — no AI model needed.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-async function generateMarkdown(keyword: string, tone: string): Promise<string> {
-  const { aiChat } = await import("./ai-provider.server");
-  const prompt = `Write an SEO-optimized product roundup review for the keyword: "${keyword}".
-Style: ${tone}.
-Include markdown sections: TL;DR (top 3), Who this is for, How we picked,
-Top 7 products (name, why, pros, cons, who), Comparison table, Buyer's guide, FAQ (5), Final verdict.
-Rules: no fake stats, use price tiers ($/$$/$$$), no invented ASINs, US English.`;
-  return aiChat(prompt);
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 120);
 }
+
+function titleCase(input: string): string {
+  return input
+    .trim()
+    .split(/\s+/)
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
+
 
 export const enqueueKeywords = createServerFn({ method: "POST" })
   .inputValidator((d: { keywords: string[]; tone?: string }) =>
@@ -120,7 +130,7 @@ export const runQueueOnce = createServerFn({ method: "POST" })
 /** Shared worker — used by both admin trigger and cron route. */
 export async function runAutopilotBatch(batchSize: number) {
   const { dbConfigured, ensureSchema, getDb } = await import("./db.server");
-  if (!dbConfigured()) return { processed: 0, results: [] as Array<{ id: number; ok: boolean; error?: string; draft_id?: number }> };
+  if (!dbConfigured()) return { processed: 0, results: [] as Array<{ id: number; ok: boolean; error?: string; review_id?: number; slug?: string }> };
   await ensureSchema();
   const db = getDb();
   const rs = await db.execute({
@@ -128,27 +138,46 @@ export async function runAutopilotBatch(batchSize: number) {
           WHERE state='queued' ORDER BY created_at ASC LIMIT ?`,
     args: [batchSize],
   });
-  const results: Array<{ id: number; ok: boolean; error?: string; draft_id?: number }> = [];
+  const results: Array<{ id: number; ok: boolean; error?: string; review_id?: number; slug?: string }> = [];
   for (const row of rs.rows) {
     const id = Number(row.id);
     const kw = String(row.keyword);
-    const tone = row.tone ? String(row.tone) : "trustworthy, concise, buyer-focused";
     await db.execute({
       sql: `UPDATE autopilot_queue SET state='running', attempts=attempts+1 WHERE id=?`,
       args: [id],
     });
     try {
-      const markdown = await generateMarkdown(kw, tone);
-      const ins = await db.execute({
-        sql: `INSERT INTO drafts(keyword, tone, markdown) VALUES(?, ?, ?)`,
-        args: [kw, tone, markdown],
+      const slug = slugify(kw);
+      if (!slug) throw new Error("keyword produced empty slug");
+      const title = titleCase(kw);
+      // Upsert as a published product page. The /product/$slug route
+      // auto-generates the article on request — no stored markdown needed.
+      const now = new Date().toISOString();
+      const existing = await db.execute({
+        sql: `SELECT id FROM reviews WHERE slug = ? LIMIT 1`,
+        args: [slug],
       });
-      const draftId = Number(ins.lastInsertRowid ?? 0);
+      let reviewId: number;
+      if (existing.rows[0]) {
+        reviewId = Number(existing.rows[0].id);
+        await db.execute({
+          sql: `UPDATE reviews SET keyword=?, title=?, status='published',
+                published_at=COALESCE(published_at, ?), updated_at=datetime('now') WHERE id=?`,
+          args: [kw, title, now, reviewId],
+        });
+      } else {
+        const ins = await db.execute({
+          sql: `INSERT INTO reviews(slug, title, keyword, markdown, status, published_at)
+                VALUES(?, ?, ?, '', 'published', ?)`,
+          args: [slug, title, kw, now],
+        });
+        reviewId = Number(ins.lastInsertRowid ?? 0);
+      }
       await db.execute({
         sql: `UPDATE autopilot_queue SET state='done', draft_id=?, processed_at=datetime('now'), error=NULL WHERE id=?`,
-        args: [draftId, id],
+        args: [reviewId, id],
       });
-      results.push({ id, ok: true, draft_id: draftId });
+      results.push({ id, ok: true, review_id: reviewId, slug });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "failed";
       await db.execute({
@@ -160,3 +189,4 @@ export async function runAutopilotBatch(batchSize: number) {
   }
   return { processed: results.length, results };
 }
+

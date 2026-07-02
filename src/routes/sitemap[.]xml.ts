@@ -34,7 +34,7 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/terms", changefreq: "yearly", priority: "0.3" },
         ];
 
-        // Append every published review from the database.
+        // Append every published product page from the database.
         try {
           const { dbConfigured, ensureSchema, getDb } = await import("@/lib/db.server");
           if (dbConfigured()) {
@@ -42,9 +42,13 @@ export const Route = createFileRoute("/sitemap.xml")({
             const rs = await getDb().execute(
               `SELECT slug, updated_at FROM reviews WHERE status='published' ORDER BY updated_at DESC LIMIT 5000`,
             );
+            const seen = new Set<string>();
             for (const r of rs.rows) {
+              const slug = String(r.slug);
+              if (seen.has(slug)) continue;
+              seen.add(slug);
               entries.push({
-                path: `/r/${String(r.slug)}`,
+                path: `/product/${slug}`,
                 lastmod: String(r.updated_at).replace(" ", "T") + "Z",
                 changefreq: "weekly",
                 priority: "0.8",

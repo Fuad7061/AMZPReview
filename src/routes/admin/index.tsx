@@ -73,7 +73,7 @@ function AdminHome() {
     {
       to: "/admin/reviews" as const,
       title: "Reviews CRUD",
-      desc: "Create, edit, publish, and delete reviews. Published pages go live at /r/<slug>.",
+      desc: "Create, edit, publish, and delete pages. Published pages go live at /product/<slug>.",
     },
     {
       to: "/admin/analytics" as const,

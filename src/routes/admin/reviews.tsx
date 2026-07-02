@@ -40,8 +40,8 @@ function ReviewsPage() {
         <div>
           <h2 className="font-serif text-xl">Reviews</h2>
           <p className="text-xs text-muted-foreground">
-            Persistent editorial layer. Published reviews are live at{" "}
-            <code className="rounded bg-muted px-1">/r/&lt;slug&gt;</code>.
+            Persistent editorial layer. Published pages are live at{" "}
+            <code className="rounded bg-muted px-1">/product/&lt;slug&gt;</code>.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -101,7 +101,7 @@ function ReviewsPage() {
                   <div className="inline-flex gap-1">
                     {r.status === "published" && (
                       <a
-                        href={`/r/${r.slug}`}
+                        href={`/product/${r.slug}`}
                         target="_blank"
                         rel="noreferrer"
                         className="rounded-full border border-border bg-background px-2 py-0.5 hover:bg-muted"
