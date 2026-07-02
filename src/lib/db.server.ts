@@ -12,9 +12,18 @@ let _initPromise: Promise<void> | null = null;
 
 function cleanEnv(v: string | undefined): string | undefined {
   if (!v) return undefined;
-  // Strip whitespace/newlines and surrounding quotes — common copy-paste
-  // artifacts that make Turso return HTTP 400 / 401.
-  return v.trim().replace(/^['"]|['"]$/g, "");
+  // Strip ALL whitespace/newlines and surrounding quotes — common copy-paste
+  // artifacts (Netlify UI can inject trailing \n, quotes, or CR) that make
+  // Turso return HTTP 400 / 401. Tokens are base64url so no legit whitespace.
+  let s = v.replace(/[\r\n\t]/g, "").trim();
+  // Peel matching wrapping quotes (single or double), possibly repeated.
+  while (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
 }
 
 function normalizeUrl(raw: string): string {
