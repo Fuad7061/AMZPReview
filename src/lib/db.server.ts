@@ -9,6 +9,7 @@ import { createClient, type Client } from "@libsql/client/web";
 
 let _client: Client | null = null;
 let _initPromise: Promise<void> | null = null;
+let _runtimeCredentials: { url: string; authToken: string } | null = null;
 
 function cleanEnv(v: string | undefined): string | undefined {
   if (!v) return undefined;
@@ -35,17 +36,87 @@ function normalizeUrl(raw: string): string {
   return u.replace(/\/+$/, "");
 }
 
+function configuredCredentials(): { url?: string; authToken?: string; source: "environment" | "temporary" } {
+  if (_runtimeCredentials) {
+    return { ..._runtimeCredentials, source: "temporary" };
+  }
+  return {
+    url: cleanEnv(process.env.TURSO_DATABASE_URL),
+    authToken: cleanEnv(process.env.TURSO_AUTH_TOKEN),
+    source: "environment",
+  };
+}
+
+function connectionErrorMessage(error: unknown, hasToken: boolean): string {
+  const raw = error instanceof Error ? error.message : "connection failed";
+  let hint = "";
+  if (/401|unauthor|token/i.test(raw)) hint = " — check TURSO_AUTH_TOKEN (expired, wrong DB, or has extra whitespace).";
+  else if (/400/.test(raw)) hint = " — check TURSO_DATABASE_URL host and that TURSO_AUTH_TOKEN belongs to this DB (regenerate if unsure).";
+  else if (/ENOTFOUND|fetch failed|network/i.test(raw)) hint = " — DNS/network error reaching the Turso host.";
+  return raw + hint + (hasToken ? "" : " — TURSO_AUTH_TOKEN is empty.");
+}
+
+export async function testDbCredentials(databaseUrl: string, authToken: string): Promise<{
+  ok: boolean;
+  host?: string;
+  latency_ms?: number;
+  error?: string;
+}> {
+  const url = cleanEnv(databaseUrl);
+  const token = cleanEnv(authToken);
+  if (!url) return { ok: false, error: "Database URL is required." };
+  if (!token) return { ok: false, error: "Auth token is required." };
+
+  const started = Date.now();
+  try {
+    const normalizedUrl = normalizeUrl(url);
+    const db = createClient({ url: normalizedUrl, authToken: token });
+    await db.execute("SELECT 1 AS n");
+    db.close();
+    return { ok: true, host: new URL(normalizedUrl).host, latency_ms: Date.now() - started };
+  } catch (e) {
+    return { ok: false, error: connectionErrorMessage(e, Boolean(token)) };
+  }
+}
+
+export async function applyRuntimeDbCredentials(databaseUrl: string, authToken: string): Promise<{
+  ok: boolean;
+  host?: string;
+  latency_ms?: number;
+  error?: string;
+}> {
+  const test = await testDbCredentials(databaseUrl, authToken);
+  if (!test.ok) return test;
+
+  const url = cleanEnv(databaseUrl);
+  const token = cleanEnv(authToken);
+  if (!url || !token) return { ok: false, error: "Database URL and auth token are required." };
+
+  const previousCredentials = _runtimeCredentials;
+  _runtimeCredentials = { url, authToken: token };
+  _client = null;
+  _initPromise = null;
+  try {
+    await ensureSchema();
+    return test;
+  } catch (e) {
+    _runtimeCredentials = previousCredentials;
+    _client = null;
+    _initPromise = null;
+    return { ok: false, error: connectionErrorMessage(e, Boolean(token)) };
+  }
+}
+
 export function getDb(): Client {
   if (_client) return _client;
-  const url = cleanEnv(process.env.TURSO_DATABASE_URL);
-  const authToken = cleanEnv(process.env.TURSO_AUTH_TOKEN);
+  const { url, authToken } = configuredCredentials();
   if (!url) throw new Error("TURSO_DATABASE_URL not configured");
   _client = createClient({ url: normalizeUrl(url), authToken });
   return _client;
 }
 
 export function dbConfigured(): boolean {
-  return Boolean(cleanEnv(process.env.TURSO_DATABASE_URL));
+  return Boolean(configuredCredentials().url);
 }
 
 export async function ensureSchema(): Promise<void> {
@@ -138,11 +209,12 @@ export async function dbStatus(): Promise<{
   connected: boolean;
   error?: string;
   host?: string;
+  source?: "environment" | "temporary";
   counts?: { drafts: number; reviews: number; clicks: number; queue: number };
 }> {
-  const url = cleanEnv(process.env.TURSO_DATABASE_URL);
-  const hasToken = Boolean(cleanEnv(process.env.TURSO_AUTH_TOKEN));
-  if (!url) return { configured: false, connected: false };
+  const { url, authToken, source } = configuredCredentials();
+  const hasToken = Boolean(authToken);
+  if (!url) return { configured: false, connected: false, source };
   try {
     await ensureSchema();
     const db = getDb();
@@ -156,6 +228,7 @@ export async function dbStatus(): Promise<{
       configured: true,
       connected: true,
       host: new URL(normalizeUrl(url)).host,
+      source,
       counts: {
         drafts: Number(d.rows[0]?.n ?? 0),
         reviews: Number(r.rows[0]?.n ?? 0),
@@ -164,16 +237,11 @@ export async function dbStatus(): Promise<{
       },
     };
   } catch (e) {
-    const raw = e instanceof Error ? e.message : "connection failed";
-    // Give admins an actionable hint alongside the raw SDK error.
-    let hint = "";
-    if (/401|unauthor|token/i.test(raw)) hint = " — check TURSO_AUTH_TOKEN (expired, wrong DB, or has extra whitespace).";
-    else if (/400/.test(raw)) hint = " — check TURSO_DATABASE_URL host and that TURSO_AUTH_TOKEN belongs to this DB (regenerate if unsure).";
-    else if (/ENOTFOUND|fetch failed|network/i.test(raw)) hint = " — DNS/network error reaching the Turso host.";
     return {
       configured: true,
       connected: false,
-      error: raw + hint + (hasToken ? "" : " — TURSO_AUTH_TOKEN is empty."),
+      source,
+      error: connectionErrorMessage(e, hasToken),
     };
   }
 }

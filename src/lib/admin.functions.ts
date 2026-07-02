@@ -87,6 +87,42 @@ export const getDbStatus = createServerFn({ method: "GET" }).handler(async () =>
   return dbStatus();
 });
 
+/** Test Turso credentials pasted in the dashboard without exposing them. */
+export const testDbConnection = createServerFn({ method: "POST" })
+  .inputValidator((d: { databaseUrl: string; authToken: string }) =>
+    z
+      .object({
+        databaseUrl: z.string().trim().min(1).max(500),
+        authToken: z.string().trim().min(1).max(4000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { isAdmin } = await import("./admin-session.server");
+    if (!(await isAdmin())) throw new Error("Unauthorized");
+    const { testDbCredentials } = await import("./db.server");
+    return testDbCredentials(data.databaseUrl, data.authToken);
+  });
+
+/** Apply DB credentials for the current running server process. */
+export const applyDbConnection = createServerFn({ method: "POST" })
+  .inputValidator((d: { databaseUrl: string; authToken: string }) =>
+    z
+      .object({
+        databaseUrl: z.string().trim().min(1).max(500),
+        authToken: z.string().trim().min(1).max(4000),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { isAdmin } = await import("./admin-session.server");
+    if (!(await isAdmin())) throw new Error("Unauthorized");
+    const { applyRuntimeDbCredentials, dbStatus } = await import("./db.server");
+    const result = await applyRuntimeDbCredentials(data.databaseUrl, data.authToken);
+    if (!result.ok) return { ...result, status: null };
+    return { ...result, status: await dbStatus() };
+  });
+
 /** Test the configured OpenAI-compatible AI provider. */
 export const testAiProvider = createServerFn({ method: "POST" }).handler(async () => {
   const { isAdmin } = await import("./admin-session.server");
@@ -118,8 +154,8 @@ export const generateReviews = createServerFn({ method: "POST" })
 
     let dbReady = false;
     try {
-      if (process.env.TURSO_DATABASE_URL) {
-        const { ensureSchema } = await import("./db.server");
+      const { dbConfigured, ensureSchema } = await import("./db.server");
+      if (dbConfigured()) {
         await ensureSchema();
         dbReady = true;
       }
@@ -174,8 +210,8 @@ Rules: no fake stats, use price tiers ($/$$/$$$), no invented ASINs, keep US Eng
 export const listDrafts = createServerFn({ method: "GET" }).handler(async () => {
   const { isAdmin } = await import("./admin-session.server");
   if (!(await isAdmin())) throw new Error("Unauthorized");
-  if (!process.env.TURSO_DATABASE_URL) return { drafts: [] as Array<{ id: number; keyword: string; tone: string | null; markdown: string; created_at: string }> };
-  const { ensureSchema, getDb } = await import("./db.server");
+  const { dbConfigured, ensureSchema, getDb } = await import("./db.server");
+  if (!dbConfigured()) return { drafts: [] as Array<{ id: number; keyword: string; tone: string | null; markdown: string; created_at: string }> };
   await ensureSchema();
   const rs = await getDb().execute(
     "SELECT id, keyword, tone, markdown, created_at FROM drafts ORDER BY created_at DESC LIMIT 200",
@@ -196,8 +232,8 @@ export const deleteDraft = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { isAdmin } = await import("./admin-session.server");
     if (!(await isAdmin())) throw new Error("Unauthorized");
-    if (!process.env.TURSO_DATABASE_URL) return { ok: false as const };
-    const { getDb } = await import("./db.server");
+    const { dbConfigured, getDb } = await import("./db.server");
+    if (!dbConfigured()) return { ok: false as const };
     await getDb().execute({ sql: "DELETE FROM drafts WHERE id = ?", args: [data.id] });
     return { ok: true as const };
   });
