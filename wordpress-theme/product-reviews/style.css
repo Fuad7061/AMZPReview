@@ -1,0 +1,18 @@
+/*
+Theme Name: Product Reviews
+Theme URI: https://lovable.dev/
+Author: Product Reviews
+Author URI: https://lovable.dev/
+Description: All-in-one Amazon affiliate review theme with built-in product data source, autopilot article generation, fact-checking, JSON-LD schema, smart search, custom sitemaps, and Gutenberg blocks. Fully white-label — every brand string is editable in Customizer → Brand. Use with any site name.
+Version: 1.1.12
+Requires at least: 6.4
+Tested up to: 6.7
+Requires PHP: 8.0
+License: GPL v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: product-reviews
+Tags: blog, news, custom-colors, custom-menu, featured-images, full-width-template, theme-options, threaded-comments, translation-ready
+*/
+
+/* All visual styles live in /assets/css/main.css and are enqueued from inc/enqueue.php.
+   This file only carries the theme header above so WordPress can identify the theme. */

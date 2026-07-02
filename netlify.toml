@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Nitro's netlify preset auto-registers the SSR handler in
+# .netlify/functions-internal and writes static assets to dist/. No
+# further redirects or functions config needed here.
